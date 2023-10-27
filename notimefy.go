@@ -59,13 +59,13 @@ func readConfig(configPath string) {
 	}
 
 	if config.KimaiUrl == "" {
-		log.Fatalln("no Kimai URL specified in the config file")
+		log.Fatalln("No Kimai URL specified in the config file")
 	}
 	if config.KimaiUsername == "" {
-		log.Fatalln("no Kimai username specified in the config file")
+		log.Fatalln("No Kimai username specified in the config file")
 	}
 	if config.KimaiPassword == "" {
-		log.Fatalln("no Kimai password specified in the config file")
+		log.Fatalln("No Kimai password specified in the config file")
 	}
 }
 
@@ -152,7 +152,16 @@ func monthDurationTotal() int {
 	return durationTotal
 }
 
+func hoursFromMinutesDuration(minutesDuration int) int {
+	hours := 0
+	if minutesDuration > 59 {
+		hours = minutesDuration / 60
+	}
+
+	return hours
+}
+
 func main() {
 	readConfig("")
-	fmt.Println(monthDurationTotal())
+	fmt.Println(hoursFromMinutesDuration(monthDurationTotal()))
 }
