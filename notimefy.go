@@ -2,10 +2,12 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -15,7 +17,7 @@ import (
 
 const (
 	kimaiTimesheetsPath = "/timesheets"
-	configFileName = "notimefy.json"
+	configFileName = ".config/notimefy.json"
 )
 
 var (
@@ -26,15 +28,21 @@ type Config struct {
 	KimaiUrl	string
 	KimaiUsername	string
 	KimaiPassword	string
+	HourThresholds	[]int
 }
 
 type KimaiRecord struct {
 	Duration	int
 }
 
+type PrevData struct {
+	Month			string
+	RemainingThresholds	[]int
+}
+
 func readConfig(configPath string) {
 	if len(configPath) == 0 {
-		configDir := getHomePath() // TODO: first try the root of the repo looking for the file
+		configDir := filepath.Join(getHomePath(), configFileName) // TODO: first try the root of the repo looking for the file
 		err := os.MkdirAll(configDir, os.ModePerm)
 		if err != nil {
 			log.Fatal(err)
@@ -67,6 +75,9 @@ func readConfig(configPath string) {
 	if config.KimaiPassword == "" {
 		log.Fatalln("No Kimai password specified in the config file")
 	}
+	if config.HourThresholds == nil {
+		log.Fatalln("No hour thresholds specified in the config file")
+	}
 }
 
 func getHomePath() string {
@@ -77,7 +88,23 @@ func getHomePath() string {
 		homePath = "HOME"
 	}
 
-	return filepath.Join(os.Getenv(homePath), ".config")
+	return os.Getenv(homePath)
+}
+
+func getDataFilePath() string {
+	parsedUrl, err := url.Parse(config.KimaiUrl)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	host := parsedUrl.Hostname()
+	dataDir := filepath.Join(getHomePath(), ".local", "share", "notimefy")
+	err = os.MkdirAll(dataDir, os.ModePerm)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return filepath.Join(dataDir, host)
 }
 
 func getCurrentMonthDayOneDate() string {
@@ -161,7 +188,52 @@ func hoursFromMinutesDuration(minutesDuration int) int {
 	return hours
 }
 
+func notifyIfNecessary() {
+	dataFilePath := getDataFilePath()
+	prevDataBytes, err := os.ReadFile(dataFilePath)
+	if err != nil {
+		log.Fatal(err)
+	}
+	var prevData PrevData
+	err = json.Unmarshal(prevDataBytes, &prevData)
+	currentMonth := time.Now().Format("2006-01")
+	if err != nil || prevData.Month != currentMonth {
+		prevData.Month = currentMonth
+		prevData.RemainingThresholds = config.HourThresholds
+	}
+
+	hours := hoursFromMinutesDuration(monthDurationTotal())
+	var remainingThresholds []int 
+	lastSurpassedThreshold := 0
+	for i := 0; i < len(prevData.RemainingThresholds); i++ {
+		remThreshold := prevData.RemainingThresholds[i]
+		if hours >= remThreshold {
+			lastSurpassedThreshold = remThreshold
+		} else {
+			remainingThresholds = append(remainingThresholds, remThreshold)
+		}
+	}
+
+	if lastSurpassedThreshold > 0 && len(remainingThresholds) != len(prevData.RemainingThresholds) {
+		prevData.RemainingThresholds = remainingThresholds
+	}
+
+	prevDataBytes, err = json.Marshal(prevData)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	lastThresholdStr := strconv.Itoa(lastSurpassedThreshold)
+	hoursStr := strconv.Itoa(hours)
+	fmt.Println("Surpassed " + lastThresholdStr + " hours (currently: " + hoursStr + ")")
+	os.WriteFile(dataFilePath, prevDataBytes, 0666)
+}
+
+// TODO: send emails
 func main() {
-	readConfig("")
-	fmt.Println(hoursFromMinutesDuration(monthDurationTotal()))
+	configPathPtr := flag.String("config", "", "Path to the configuration file")
+	flag.Parse()
+
+	readConfig(*configPathPtr)
+	notifyIfNecessary()
 }
