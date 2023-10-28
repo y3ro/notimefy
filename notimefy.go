@@ -42,7 +42,7 @@ type PrevData struct {
 
 func readConfig(configPath string) {
 	if len(configPath) == 0 {
-		configDir := filepath.Join(getHomePath(), configFileName) // TODO: first try the root of the repo looking for the file
+		configDir := getHomePath() // TODO: first try the root of the repo looking for the file
 		err := os.MkdirAll(configDir, os.ModePerm)
 		if err != nil {
 			log.Fatal(err)
@@ -189,13 +189,13 @@ func hoursFromMinutesDuration(minutesDuration int) int {
 }
 
 func notifyIfNecessary() {
+	var prevData PrevData
 	dataFilePath := getDataFilePath()
 	prevDataBytes, err := os.ReadFile(dataFilePath)
-	if err != nil {
-		log.Fatal(err)
+	if err == nil {
+		err = json.Unmarshal(prevDataBytes, &prevData)
 	}
-	var prevData PrevData
-	err = json.Unmarshal(prevDataBytes, &prevData)
+
 	currentMonth := time.Now().Format("2006-01")
 	if err != nil || prevData.Month != currentMonth {
 		prevData.Month = currentMonth
@@ -216,20 +216,20 @@ func notifyIfNecessary() {
 
 	if lastSurpassedThreshold > 0 && len(remainingThresholds) != len(prevData.RemainingThresholds) {
 		prevData.RemainingThresholds = remainingThresholds
+		lastThresholdStr := strconv.Itoa(lastSurpassedThreshold)
+		hoursStr := strconv.Itoa(hours)
+		fmt.Println("Surpassed " + lastThresholdStr + " hours (currently: " + hoursStr + " h)")
 	}
 
 	prevDataBytes, err = json.Marshal(prevData)
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	lastThresholdStr := strconv.Itoa(lastSurpassedThreshold)
-	hoursStr := strconv.Itoa(hours)
-	fmt.Println("Surpassed " + lastThresholdStr + " hours (currently: " + hoursStr + ")")
 	os.WriteFile(dataFilePath, prevDataBytes, 0666)
 }
 
 // TODO: send emails
+// TODO: option to reset prev data
 func main() {
 	configPathPtr := flag.String("config", "", "Path to the configuration file")
 	flag.Parse()
