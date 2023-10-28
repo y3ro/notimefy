@@ -3,10 +3,10 @@ package main
 import (
 	"encoding/json"
 	"flag"
-	"fmt"
 	"io"
 	"log"
 	"net/http"
+	"net/smtp"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -28,6 +28,11 @@ type Config struct {
 	KimaiUrl	string
 	KimaiUsername	string
 	KimaiPassword	string
+	SMTPUsername	string
+	SMTPPassword	string
+	SMTPHost	string
+	SMTPPort	string
+	RecipientEmail	string
 	HourThresholds	[]int
 }
 
@@ -42,7 +47,7 @@ type PrevData struct {
 
 func readConfig(configPath string) {
 	if len(configPath) == 0 {
-		configDir := getHomePath() // TODO: first try the root of the repo looking for the file
+		configDir := getHomePath()
 		err := os.MkdirAll(configDir, os.ModePerm)
 		if err != nil {
 			log.Fatal(err)
@@ -74,6 +79,21 @@ func readConfig(configPath string) {
 	}
 	if config.KimaiPassword == "" {
 		log.Fatalln("No Kimai password specified in the config file")
+	}
+	if config.SMTPUsername == "" {
+		log.Fatalln("No SMTP username specified in the config file")
+	}
+	if config.SMTPPassword == "" {
+		log.Fatalln("No SMTP password specified in the config file")
+	}
+	if config.SMTPHost == "" {
+		log.Fatalln("No SMTP host specified in the config file")
+	}
+	if config.SMTPPort == "" {
+		log.Fatalln("No SMTP port specified in the config file")
+	}
+	if config.RecipientEmail == "" {
+		log.Fatalln("No recipient email specified in the config file")
 	}
 	if config.HourThresholds == nil {
 		log.Fatalln("No hour thresholds specified in the config file")
@@ -193,6 +213,22 @@ func resetPrevData() {
 	os.Remove(dataFilePath)
 }
 
+func sendNotification(lastThresholdStr string, hoursStr string) {
+	host := config.SMTPHost
+	toStr := config.RecipientEmail
+	to := []string{toStr}
+	message := []byte("To: " + toStr + "\r\n" +
+		"Subject: Threshold surpassed\r\n" +
+		"\r\n" +"Surpassed " + lastThresholdStr + " hours (currently: " + hoursStr + " h)\r\n")
+
+	auth := smtp.PlainAuth("", config.SMTPUsername, config.SMTPPassword, host)
+	err := smtp.SendMail(host + ":" + config.SMTPPort, auth, config.SMTPUsername, to, message)
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Println("Email sent") // TODO: more data
+}
+
 func notifyIfNecessary() {
 	var prevData PrevData
 	dataFilePath := getDataFilePath()
@@ -223,7 +259,7 @@ func notifyIfNecessary() {
 		prevData.RemainingThresholds = remainingThresholds
 		lastThresholdStr := strconv.Itoa(lastSurpassedThreshold)
 		hoursStr := strconv.Itoa(hours)
-		fmt.Println("Surpassed " + lastThresholdStr + " hours (currently: " + hoursStr + " h)")
+		sendNotification(lastThresholdStr, hoursStr)
 	}
 
 	prevDataBytes, err = json.Marshal(prevData)
@@ -233,7 +269,6 @@ func notifyIfNecessary() {
 	os.WriteFile(dataFilePath, prevDataBytes, 0666)
 }
 
-// TODO: send emails
 func main() {
 	configPathPtr := flag.String("config", "", "Path to the configuration file")
 	resetOpPtr := flag.Bool("reset-first", false, "Reset program state before running")
