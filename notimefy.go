@@ -188,6 +188,11 @@ func hoursFromMinutesDuration(minutesDuration int) int {
 	return hours
 }
 
+func resetPrevData() {
+	dataFilePath := getDataFilePath() 
+	os.Remove(dataFilePath)
+}
+
 func notifyIfNecessary() {
 	var prevData PrevData
 	dataFilePath := getDataFilePath()
@@ -229,11 +234,14 @@ func notifyIfNecessary() {
 }
 
 // TODO: send emails
-// TODO: option to reset prev data
 func main() {
 	configPathPtr := flag.String("config", "", "Path to the configuration file")
+	resetOpPtr := flag.Bool("reset-first", false, "Reset program state before running")
 	flag.Parse()
 
 	readConfig(*configPathPtr)
+	if *resetOpPtr {
+		resetPrevData()
+	}
 	notifyIfNecessary()
 }
