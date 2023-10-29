@@ -213,20 +213,21 @@ func resetPrevData() {
 	os.Remove(dataFilePath)
 }
 
-func sendNotification(lastThresholdStr string, hoursStr string) {
+func sendNotification(lastThresholdStr string, hoursStr string, monthAndYear string) {
 	host := config.SMTPHost
 	toStr := config.RecipientEmail
 	to := []string{toStr}
 	message := []byte("To: " + toStr + "\r\n" +
-		"Subject: Threshold surpassed\r\n" +
-		"\r\n" +"Surpassed " + lastThresholdStr + " hours (currently: " + hoursStr + " h)\r\n")
+		"Subject: " + lastThresholdStr + " hours threshold surpassed\r\n" +
+		"\r\n" +"Surpassed " + lastThresholdStr + " hours (currently: " + hoursStr + " hours) " +
+		"in " + monthAndYear + "\r\n")
 
 	auth := smtp.PlainAuth("", config.SMTPUsername, config.SMTPPassword, host)
 	err := smtp.SendMail(host + ":" + config.SMTPPort, auth, config.SMTPUsername, to, message)
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Println("Email sent") // TODO: more data
+	log.Println("Email sent: " + string(message))
 }
 
 func notifyIfNecessary() {
@@ -259,7 +260,7 @@ func notifyIfNecessary() {
 		prevData.RemainingThresholds = remainingThresholds
 		lastThresholdStr := strconv.Itoa(lastSurpassedThreshold)
 		hoursStr := strconv.Itoa(hours)
-		sendNotification(lastThresholdStr, hoursStr)
+		sendNotification(lastThresholdStr, hoursStr, currentMonth)
 	}
 
 	prevDataBytes, err = json.Marshal(prevData)
