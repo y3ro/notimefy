@@ -196,7 +196,7 @@ func monthDurationTotal() int {
 		durationTotal += monthRecords[i].Duration
 	}
 
-	return durationTotal
+	return durationTotal / 60
 }
 
 func hoursFromMinutesDuration(minutesDuration int) int {
@@ -270,7 +270,7 @@ func notifyIfNecessary() {
 	os.WriteFile(dataFilePath, prevDataBytes, 0666)
 }
 
-func main() {
+func main() { // TODO: simple reset option
 	configPathPtr := flag.String("config", "", "Path to the configuration file")
 	resetOpPtr := flag.Bool("reset-first", false, "Reset program state before running")
 	flag.Parse()
