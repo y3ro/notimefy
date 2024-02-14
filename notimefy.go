@@ -217,8 +217,9 @@ func sendNotification(lastThresholdStr string, hoursStr string, monthAndYear str
 	host := config.SMTPHost
 	toStr := config.RecipientEmail
 	to := []string{toStr}
+	dateStr := monthAndYear + "-01"
 	message := []byte("To: " + toStr + "\r\n" +
-		"Subject: " + lastThresholdStr + " hours threshold surpassed\r\n" +
+		"Subject: " + lastThresholdStr + " hours threshold surpassed since " + dateStr + "\r\n" +
 		"\r\n" + "Surpassed " + lastThresholdStr + " hours (currently: " + hoursStr + " hours) " +
 		"in " + monthAndYear + "\r\n")
 
