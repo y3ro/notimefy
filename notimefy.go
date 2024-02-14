@@ -17,37 +17,37 @@ import (
 
 const (
 	kimaiTimesheetsPath = "/timesheets"
-	configFileName = ".config/notimefy.json"
+	configFileName      = ".config/notimefy.json" // TODO: only file
 )
 
 var (
-	config	Config
+	config Config
 )
 
 type Config struct {
-	KimaiUrl	string
-	KimaiUsername	string
-	KimaiPassword	string
-	SMTPUsername	string
-	SMTPPassword	string
-	SMTPHost	string
-	SMTPPort	string
-	RecipientEmail	string
-	HourThresholds	[]int
+	KimaiUrl       string
+	KimaiUsername  string
+	KimaiPassword  string
+	SMTPUsername   string
+	SMTPPassword   string
+	SMTPHost       string
+	SMTPPort       string
+	RecipientEmail string
+	HourThresholds []int
 }
 
 type KimaiRecord struct {
-	Duration	int
+	Duration int
 }
 
 type PrevData struct {
-	Month			string
-	RemainingThresholds	[]int
+	Month               string
+	RemainingThresholds []int
 }
 
 func readConfig(configPath string) {
 	if len(configPath) == 0 {
-		configDir := getHomePath()
+		configDir := getHomePath() // TODO: getConfigDir
 		err := os.MkdirAll(configDir, os.ModePerm)
 		if err != nil {
 			log.Fatal(err)
@@ -108,7 +108,7 @@ func getHomePath() string {
 		homePath = "HOME"
 	}
 
-	return os.Getenv(homePath)
+	return os.Getenv(homePath) // TODO: add .config
 }
 
 func getDataFilePath() string {
@@ -147,11 +147,11 @@ func fetchKimaiResource(url string, method string, body io.Reader) []byte {
 	httpReq.Header.Set("X-AUTH-TOKEN", config.KimaiPassword)
 
 	if body != nil {
-		httpReq.Header.Set("Content-Type", "application/json") 
+		httpReq.Header.Set("Content-Type", "application/json")
 	}
 
 	resp, err := client.Do(httpReq)
-	if err != nil {	
+	if err != nil {
 		log.Fatal(err)
 	}
 	defer resp.Body.Close()
@@ -191,7 +191,7 @@ func fetchKimaiMonthRecords() []KimaiRecord {
 
 func monthDurationTotal() int {
 	monthRecords := fetchKimaiMonthRecords()
-	var durationTotal int 
+	var durationTotal int
 	for i := 0; i < len(monthRecords); i++ {
 		durationTotal += monthRecords[i].Duration
 	}
@@ -209,7 +209,7 @@ func hoursFromMinutesDuration(minutesDuration int) int {
 }
 
 func resetPrevData() {
-	dataFilePath := getDataFilePath() 
+	dataFilePath := getDataFilePath()
 	os.Remove(dataFilePath)
 }
 
@@ -219,11 +219,11 @@ func sendNotification(lastThresholdStr string, hoursStr string, monthAndYear str
 	to := []string{toStr}
 	message := []byte("To: " + toStr + "\r\n" +
 		"Subject: " + lastThresholdStr + " hours threshold surpassed\r\n" +
-		"\r\n" +"Surpassed " + lastThresholdStr + " hours (currently: " + hoursStr + " hours) " +
+		"\r\n" + "Surpassed " + lastThresholdStr + " hours (currently: " + hoursStr + " hours) " +
 		"in " + monthAndYear + "\r\n")
 
 	auth := smtp.PlainAuth("", config.SMTPUsername, config.SMTPPassword, host)
-	err := smtp.SendMail(host + ":" + config.SMTPPort, auth, config.SMTPUsername, to, message)
+	err := smtp.SendMail(host+":"+config.SMTPPort, auth, config.SMTPUsername, to, message)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -245,7 +245,7 @@ func notifyIfNecessary() {
 	}
 
 	hours := hoursFromMinutesDuration(monthDurationTotal())
-	var remainingThresholds []int 
+	var remainingThresholds []int
 	lastSurpassedThreshold := 0
 	for i := 0; i < len(prevData.RemainingThresholds); i++ {
 		remThreshold := prevData.RemainingThresholds[i]
