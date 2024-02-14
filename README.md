@@ -43,5 +43,5 @@ I personally have a `crontab` entry to periodically run this app:
 
 Avaliable options:
 
-* `-reset-first`: Reset the app's state before running. Could be useful if the file `$HOME/.local/share/notimefy/<kimai_host>`, which is managed by the app, falls into a inconsistent state.
+* `-reset-first`: Reset the app's state before running. Could be useful if the file `$HOME/.local/share/notimefy/<kimai_host>`, which is managed by the app, falls into a inconsistent state, mostly when changing the hour thresholds in the config file (you can manually delete the the app's state file in this case).
 * `-config <filepath>`: Specifies the path to the configuration file. If not specified, the default configuration file is in `$HOME/.config/notimefy.json`. 
